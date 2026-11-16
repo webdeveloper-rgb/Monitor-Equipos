@@ -9,23 +9,53 @@ namespace MonitorAgent.Collectors
 {
     sealed class EventLogCollector : ICollector
     {
+        const int CursorVersion = 2;
+        const int MaxEventsPerReport = 500;
+
         public string Name => "events";
 
         public void Collect(Report report, CollectorContext context)
         {
             var cfg = context.Config;
             bool fullAudit = context.State.EventExtractionMode == "full";
-            foreach (var logName in cfg.EventLogs)
+            string mode = fullAudit ? "full" : "standard";
+            var logNames = fullAudit
+                ? EventLogSession.GlobalSession.GetLogNames()
+                    .Where(name => !string.IsNullOrWhiteSpace(name))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+                    .ToList()
+                : (cfg.EventLogs ?? new string[0])
+                    .Where(name => !string.IsNullOrWhiteSpace(name))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+
+            if (logNames.Count == 0)
+                return;
+
+            int startIndex = fullAudit ? context.State.EventLogScanOffset : 0;
+            if (startIndex < 0 || startIndex >= logNames.Count)
+                startIndex = 0;
+
+            int logsProcessed = 0;
+            for (int offset = 0; offset < logNames.Count && report.Events.Count < MaxEventsPerReport; offset++)
             {
+                string logName = logNames[(startIndex + offset) % logNames.Count];
+                logsProcessed = offset + 1;
                 try
                 {
                     string cursorKey = logName.ToUpperInvariant();
-                    if (!context.State.EventLogCursors.TryGetValue(cursorKey, out var cursor) || cursor == null)
+                    if (!context.State.EventLogCursors.TryGetValue(cursorKey, out var cursor)
+                        || cursor == null
+                        || cursor.Version != CursorVersion
+                        || cursor.Mode != mode)
                     {
                         cursor = new EventLogCursor
                         {
                             BackfillFromUtc = context.StartedUtc.AddDays(-30),
-                            BackfillComplete = false
+                            BackfillComplete = false,
+                            Mode = mode,
+                            Version = CursorVersion
                         };
                     }
 
@@ -38,15 +68,20 @@ namespace MonitorAgent.Collectors
                     string recordId = cursor.LastRecordId.HasValue
                         ? " and EventRecordID > " + cursor.LastRecordId.Value.ToString(CultureInfo.InvariantCulture)
                         : "";
-                    string xpath = "*[System[(Level=1 or Level=2)" + timeFilter + recordId + "]]";
+                    string xpath = fullAudit
+                        ? cursor.LastRecordId.HasValue
+                            ? "*[System[EventRecordID > " + cursor.LastRecordId.Value.ToString(CultureInfo.InvariantCulture) + "]]"
+                            : "*"
+                        : "*[System[(Level=1 or Level=2)" + timeFilter + recordId + "]]";
                     var query = new EventLogQuery(logName, PathType.LogName, xpath) { ReverseDirection = false };
                     using (var reader = new EventLogReader(query))
                     {
                         EventRecord e;
                         int count = 0;
                         long? lastRecordId = null;
-                        int maxPerLog = Math.Max(1, cfg.EventsMaxPerLog);
-                        while (count < maxPerLog && (e = reader.ReadEvent()) != null)
+                        int remaining = MaxEventsPerReport - report.Events.Count;
+                        int batchLimit = Math.Min(Math.Max(1, cfg.EventsMaxPerLog), remaining);
+                        while (count < batchLimit && (e = reader.ReadEvent()) != null)
                         {
                             using (e)
                             {
@@ -60,7 +95,7 @@ namespace MonitorAgent.Collectors
                                     Log = logName,
                                     Source = e.ProviderName,
                                     EventId = e.Id,
-                                    Level = e.Level == 1 ? "Critical" : "Error",
+                                    Level = GetLevelName(e),
                                     Message = SafeMessage(e)
                                 });
                                 lastRecordId = e.RecordId;
@@ -106,7 +141,26 @@ namespace MonitorAgent.Collectors
                 }
             }
 
+            context.State.EventLogScanOffset = fullAudit
+                ? (startIndex + logsProcessed) % logNames.Count
+                : 0;
             report.Events = report.Events.OrderByDescending(x => x.TimeUtc).ToList();
+        }
+
+        static string GetLevelName(EventRecord e)
+        {
+            if (!e.Level.HasValue)
+                return "Unknown";
+            switch (e.Level.Value)
+            {
+                case 0: return "LogAlways";
+                case 1: return "Critical";
+                case 2: return "Error";
+                case 3: return "Warning";
+                case 4: return "Information";
+                case 5: return "Verbose";
+                default: return "Level " + e.Level.Value.ToString(CultureInfo.InvariantCulture);
+            }
         }
 
         static long? ReadLatestRecordId(string logName)

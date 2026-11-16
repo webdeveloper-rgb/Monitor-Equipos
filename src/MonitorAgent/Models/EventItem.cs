@@ -9,7 +9,7 @@ namespace MonitorAgent.Models
         public string Log { get; set; }
         public string Source { get; set; }
         public int EventId { get; set; }
-        public string Level { get; set; }   // Critical / Error
+        public string Level { get; set; }
         public string Message { get; set; }
     }
 }

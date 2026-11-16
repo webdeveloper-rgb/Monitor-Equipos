@@ -9,6 +9,7 @@ namespace MonitorAgent.Infrastructure
     {
         public string MachineId { get; set; }
         public string EventExtractionMode { get; set; } = "standard";
+        public int EventLogScanOffset { get; set; }
         public Dictionary<string, EventLogCursor> EventLogCursors { get; set; } =
             new Dictionary<string, EventLogCursor>(StringComparer.OrdinalIgnoreCase);
 
@@ -51,5 +52,7 @@ namespace MonitorAgent.Infrastructure
         public DateTime BackfillFromUtc { get; set; }
         public long? LastRecordId { get; set; }
         public bool BackfillComplete { get; set; }
+        public string Mode { get; set; }
+        public int Version { get; set; }
     }
 }

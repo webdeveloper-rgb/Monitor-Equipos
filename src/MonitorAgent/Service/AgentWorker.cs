@@ -69,6 +69,7 @@ namespace MonitorAgent.Service
                     {
                         state.EventExtractionMode = eventExtractionMode;
                         state.EventLogCursors.Clear();
+                        state.EventLogScanOffset = 0;
                         Log.Info("Modo de extracción de eventos actualizado: " + eventExtractionMode);
                     }
                 }
