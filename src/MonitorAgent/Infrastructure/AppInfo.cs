@@ -15,6 +15,7 @@ namespace MonitorAgent.Infrastructure
 
         public static string ConfigFile => Path.Combine(DataDir, "config.json");
         public static string StateFile => Path.Combine(DataDir, "state.json");
+        public static string EnrollmentMarkerFile => Path.Combine(DataDir, "enrolled.marker");
         public static string LogFile => Path.Combine(DataDir, "agent.log");
         public static string OutboxDir => Path.Combine(DataDir, "outbox");
     }

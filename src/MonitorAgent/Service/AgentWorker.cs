@@ -47,6 +47,11 @@ namespace MonitorAgent.Service
                 Log.Error("ApiUrl no configurada (config.json)");
                 return;
             }
+            if (string.IsNullOrWhiteSpace(cfg.ApiToken))
+            {
+                Log.Error("Credencial de agente no configurada (config.json)");
+                return;
+            }
 
             var state = AgentState.Load();
             DateTime started = DateTime.UtcNow;

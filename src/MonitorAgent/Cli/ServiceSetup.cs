@@ -1,7 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Security.Principal;
+using System.Text.RegularExpressions;
+using MonitorAgent.Api;
 using MonitorAgent.Infrastructure;
 
 namespace MonitorAgent.Cli
@@ -14,9 +17,33 @@ namespace MonitorAgent.Cli
 
             var cfg = AgentConfig.Load();
             if (options.TryGetValue("url", out var url) && url != "") cfg.ApiUrl = url;
-            if (options.TryGetValue("token", out var token) && token != "") cfg.ApiToken = token;
             if (options.TryGetValue("interval", out var iv) && int.TryParse(iv, out var minutes)) cfg.IntervalMinutes = minutes;
             if (string.IsNullOrWhiteSpace(cfg.ApiUrl)) throw new InvalidOperationException("Falta --url");
+            if (!Uri.TryCreate(cfg.ApiUrl, UriKind.Absolute, out var ingestUri) || ingestUri.Scheme != Uri.UriSchemeHttps)
+                throw new InvalidOperationException("--url debe ser una URL HTTPS absoluta.");
+
+            var enrollmentCode = options.TryGetValue("enroll-code", out var code) ? code : "";
+            if (!string.IsNullOrEmpty(enrollmentCode))
+            {
+                if (!Regex.IsMatch(enrollmentCode, @"\Amre_[0-9a-f]{48}\z"))
+                    throw new InvalidOperationException("--enroll-code no tiene un formato válido.");
+
+                if (!Regex.IsMatch(cfg.ApiToken ?? "", @"\Amra_[0-9a-f]{64}\z"))
+                    cfg.ApiToken = ApiClient.CreateDeviceToken();
+                cfg.Save();
+
+                var state = AgentState.Load();
+                if (!ApiClient.Enroll(cfg.ApiUrl, enrollmentCode, state.MachineId, cfg.ApiToken, out var enrollmentError))
+                    throw new InvalidOperationException(enrollmentError);
+
+                Directory.CreateDirectory(AppInfo.DataDir);
+                File.WriteAllText(AppInfo.EnrollmentMarkerFile, DateTime.UtcNow.ToString("o"));
+            }
+            else if (!Regex.IsMatch(cfg.ApiToken ?? "", @"\Amra_[0-9a-f]{64}\z"))
+            {
+                throw new InvalidOperationException("Falta un código de alta de un solo uso. Créalo en Intranet-Sauber e introdúcelo en el instalador.");
+            }
+
             cfg.Save();
 
             string exe = Process.GetCurrentProcess().MainModule.FileName;

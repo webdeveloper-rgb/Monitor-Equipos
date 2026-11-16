@@ -6,7 +6,9 @@ namespace MonitorAgent.Cli
     static class CommandLine
     {
         public const string Help = @"MonitorAgent
-  --install --url <https://api/...> --token <TOKEN> [--interval 15]   Instala y arranca el servicio
+  --install --url <https://.../monitor-ingest.php> [--enroll-code <CODIGO>]
+          [--interval 15]                                             Da de alta el equipo e instala/arranca el servicio
+                                                                      (el código solo es necesario en el primer alta)
   --uninstall                                                         Detiene y elimina el servicio
   --dump                                                              Imprime el informe JSON sin enviarlo
   --once                                                              Genera y envia un informe ahora
