@@ -17,6 +17,7 @@ namespace MonitorAgent.Cli
 
             var cfg = AgentConfig.Load();
             if (options.TryGetValue("url", out var url) && url != "") cfg.ApiUrl = url;
+            if (options.TryGetValue("token", out var token) && token != "") cfg.ApiToken = token;
             if (options.TryGetValue("interval", out var iv) && int.TryParse(iv, out var minutes)) cfg.IntervalMinutes = minutes;
             if (string.IsNullOrWhiteSpace(cfg.ApiUrl)) throw new InvalidOperationException("Falta --url");
             if (!Uri.TryCreate(cfg.ApiUrl, UriKind.Absolute, out var ingestUri) || ingestUri.Scheme != Uri.UriSchemeHttps)
@@ -39,9 +40,9 @@ namespace MonitorAgent.Cli
                 Directory.CreateDirectory(AppInfo.DataDir);
                 File.WriteAllText(AppInfo.EnrollmentMarkerFile, DateTime.UtcNow.ToString("o"));
             }
-            else if (!Regex.IsMatch(cfg.ApiToken ?? "", @"\Amra_[0-9a-f]{64}\z"))
+            else if (!Regex.IsMatch(cfg.ApiToken ?? "", @"\A(?:mra_[0-9a-f]{64}|sbr_[0-9a-f]{64})\z"))
             {
-                throw new InvalidOperationException("Falta un código de alta de un solo uso. Créalo en Intranet-Sauber e introdúcelo en el instalador.");
+                throw new InvalidOperationException("Falta una credencial válida. Usa --token o --enroll-code.");
             }
 
             cfg.Save();
