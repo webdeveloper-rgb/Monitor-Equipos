@@ -81,6 +81,7 @@ namespace MonitorAgent.Api
                 using (var tokenReq = new HttpRequestMessage(HttpMethod.Post, tokenUri))
                 {
                     tokenReq.Headers.Authorization = new AuthenticationHeaderValue("Bearer", cfg.ApiToken);
+                    tokenReq.Headers.Add("X-Api-Key", cfg.ApiToken);
                     tokenReq.Headers.Add("X-Machine-Id", machineId);
                     tokenReq.Content = new StringContent(
                         JsonConvert.SerializeObject(new { machineId = machineId }),
@@ -106,6 +107,7 @@ namespace MonitorAgent.Api
                         using (var req = new HttpRequestMessage(HttpMethod.Post, ingestUri))
                         {
                             req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokenData.Token);
+                            req.Headers.Add("X-Api-Key", tokenData.Token);
                             req.Headers.Add("X-Machine-Id", machineId);
                             req.Content = new StringContent(json, Encoding.UTF8, "application/json");
 
