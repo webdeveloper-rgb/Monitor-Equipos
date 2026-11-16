@@ -43,8 +43,9 @@ namespace MonitorAgent
 
         static int Dump()
         {
-            var context = new CollectorContext(AgentConfig.Load(), DateTime.UtcNow.AddHours(-24));
-            var report = ReportBuilder.CreateDefault().Build(AgentState.Load(), context);
+            var state = AgentState.Load();
+            var context = new CollectorContext(AgentConfig.Load(), state, DateTime.UtcNow);
+            var report = ReportBuilder.CreateDefault().Build(state, context);
             Console.WriteLine(JsonConvert.SerializeObject(report, Formatting.Indented, JsonDefaults.Settings));
             return 0;
         }

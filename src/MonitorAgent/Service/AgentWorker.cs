@@ -55,24 +55,22 @@ namespace MonitorAgent.Service
 
             var state = AgentState.Load();
             DateTime started = DateTime.UtcNow;
-            var context = new CollectorContext(cfg, state.LastEventUtc ?? started.AddHours(-24));
+            var context = new CollectorContext(cfg, state, started);
 
             var report = _builder.Build(state, context);
             string json = JsonConvert.SerializeObject(report, Formatting.None, JsonDefaults.Settings);
 
-            // Los eventos ya van en el informe (o en la cola), asi que avanzamos la marca.
-            state.LastEventUtc = started;
-            state.Save();
-
             Outbox.Flush(cfg, state.MachineId);
             if (ApiClient.Send(cfg, state.MachineId, json, out var error))
             {
+                state.Save();
                 Log.Info("Informe enviado (" + report.Events.Count + " eventos, " + report.Disks.Count + " discos)");
             }
             else
             {
                 Log.Error("Envio fallido, se encola: " + error);
                 Outbox.Enqueue(json);
+                state.Save();
             }
         }
     }

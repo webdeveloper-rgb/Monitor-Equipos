@@ -12,13 +12,15 @@ namespace MonitorAgent.Collectors
 
     sealed class CollectorContext
     {
-        public CollectorContext(AgentConfig config, DateTime eventsSinceUtc)
+        public CollectorContext(AgentConfig config, AgentState state, DateTime startedUtc)
         {
             Config = config;
-            EventsSinceUtc = eventsSinceUtc;
+            State = state;
+            StartedUtc = startedUtc;
         }
 
         public AgentConfig Config { get; }
-        public DateTime EventsSinceUtc { get; }
+        public AgentState State { get; }
+        public DateTime StartedUtc { get; }
     }
 }

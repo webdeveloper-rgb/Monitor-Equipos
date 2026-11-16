@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using Newtonsoft.Json;
 
@@ -7,7 +8,8 @@ namespace MonitorAgent.Infrastructure
     sealed class AgentState
     {
         public string MachineId { get; set; }
-        public DateTime? LastEventUtc { get; set; }
+        public Dictionary<string, EventLogCursor> EventLogCursors { get; set; } =
+            new Dictionary<string, EventLogCursor>(StringComparer.OrdinalIgnoreCase);
 
         public static AgentState Load()
         {
@@ -25,6 +27,8 @@ namespace MonitorAgent.Infrastructure
                 state.MachineId = Guid.NewGuid().ToString();
                 state.Save();
             }
+            if (state.EventLogCursors == null)
+                state.EventLogCursors = new Dictionary<string, EventLogCursor>(StringComparer.OrdinalIgnoreCase);
             return state;
         }
 
@@ -37,5 +41,12 @@ namespace MonitorAgent.Infrastructure
             }
             catch (Exception ex) { Log.Error("state: " + ex.Message); }
         }
+    }
+
+    sealed class EventLogCursor
+    {
+        public DateTime BackfillFromUtc { get; set; }
+        public long? LastRecordId { get; set; }
+        public bool BackfillComplete { get; set; }
     }
 }
