@@ -1,0 +1,27 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{B0EB21AA-4BE7-472D-80A7-1D1D2CD9CA2E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MonitorAgent", "src\MonitorAgent\MonitorAgent.csproj", "{6298BE45-AC85-4D8C-AD7D-A6555DA0465F}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{6298BE45-AC85-4D8C-AD7D-A6555DA0465F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6298BE45-AC85-4D8C-AD7D-A6555DA0465F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6298BE45-AC85-4D8C-AD7D-A6555DA0465F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6298BE45-AC85-4D8C-AD7D-A6555DA0465F}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{6298BE45-AC85-4D8C-AD7D-A6555DA0465F} = {B0EB21AA-4BE7-472D-80A7-1D1D2CD9CA2E}
+	EndGlobalSection
+EndGlobal
