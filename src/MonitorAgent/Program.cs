@@ -25,8 +25,8 @@ namespace MonitorAgent
             var opts = CommandLine.Parse(args);
             try
             {
-                if (opts.ContainsKey("install")) { ServiceInstaller.Install(opts); return 0; }
-                if (opts.ContainsKey("uninstall")) { ServiceInstaller.Uninstall(); return 0; }
+                if (opts.ContainsKey("install")) { ServiceSetup.Install(opts); return 0; }
+                if (opts.ContainsKey("uninstall")) { ServiceSetup.Uninstall(); return 0; }
                 if (opts.ContainsKey("dump")) return Dump();
                 if (opts.ContainsKey("once")) { new AgentWorker().RunOnce(); return 0; }
                 if (opts.ContainsKey("console")) return RunConsole();

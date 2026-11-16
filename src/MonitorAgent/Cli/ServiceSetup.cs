@@ -6,7 +6,7 @@ using MonitorAgent.Infrastructure;
 
 namespace MonitorAgent.Cli
 {
-    static class ServiceInstaller
+    static class ServiceSetup
     {
         public static void Install(Dictionary<string, string> options)
         {
