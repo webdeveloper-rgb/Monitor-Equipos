@@ -14,6 +14,7 @@ namespace MonitorAgent.Collectors
         public void Collect(Report report, CollectorContext context)
         {
             var cfg = context.Config;
+            bool fullAudit = context.State.EventExtractionMode == "full";
             foreach (var logName in cfg.EventLogs)
             {
                 try
@@ -31,11 +32,13 @@ namespace MonitorAgent.Collectors
                     DateTime sinceUtc = cursor.BackfillComplete
                         ? context.StartedUtc.AddDays(-30)
                         : cursor.BackfillFromUtc;
-                    string since = sinceUtc.ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture);
+                    string timeFilter = fullAudit
+                        ? ""
+                        : " and TimeCreated[@SystemTime>='" + sinceUtc.ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture) + "']";
                     string recordId = cursor.LastRecordId.HasValue
                         ? " and EventRecordID > " + cursor.LastRecordId.Value.ToString(CultureInfo.InvariantCulture)
                         : "";
-                    string xpath = "*[System[(Level=1 or Level=2) and TimeCreated[@SystemTime>='" + since + "']" + recordId + "]]";
+                    string xpath = "*[System[(Level=1 or Level=2)" + timeFilter + recordId + "]]";
                     var query = new EventLogQuery(logName, PathType.LogName, xpath) { ReverseDirection = false };
                     using (var reader = new EventLogReader(query))
                     {

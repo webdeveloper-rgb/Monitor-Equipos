@@ -18,6 +18,12 @@ namespace MonitorAgent.Api
             public string Token { get; set; }
         }
 
+        sealed class IngestResponse
+        {
+            [JsonProperty("event_extraction_mode")]
+            public string EventExtractionMode { get; set; }
+        }
+
         public static string CreateDeviceToken()
         {
             var bytes = new byte[32];
@@ -71,6 +77,12 @@ namespace MonitorAgent.Api
 
         public static bool Send(AgentConfig cfg, string machineId, string json, out string error)
         {
+            return Send(cfg, machineId, json, out error, out _);
+        }
+
+        public static bool Send(AgentConfig cfg, string machineId, string json, out string error, out string eventExtractionMode)
+        {
+            eventExtractionMode = null;
             try
             {
                 var ingestUri = new Uri(cfg.ApiUrl, UriKind.Absolute);
@@ -113,7 +125,14 @@ namespace MonitorAgent.Api
 
                             using (var resp = Http.SendAsync(req).GetAwaiter().GetResult())
                             {
-                                if (resp.IsSuccessStatusCode) { error = null; return true; }
+                                if (resp.IsSuccessStatusCode)
+                                {
+                                    string responseJson = resp.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                                    var responseData = JsonConvert.DeserializeObject<IngestResponse>(responseJson);
+                                    eventExtractionMode = responseData?.EventExtractionMode;
+                                    error = null;
+                                    return true;
+                                }
                                 error = (int)resp.StatusCode + " " + resp.ReasonPhrase;
                                 return false;
                             }

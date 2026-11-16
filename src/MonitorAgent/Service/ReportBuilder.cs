@@ -38,6 +38,8 @@ namespace MonitorAgent.Service
                 AgentVersion = AppInfo.Version,
                 MachineId = state.MachineId,
                 Hostname = Environment.MachineName,
+                RustDeskId = context.Config.RustDeskId,
+                EventExtractionMode = state.EventExtractionMode,
                 TimestampUtc = DateTime.UtcNow
             };
 

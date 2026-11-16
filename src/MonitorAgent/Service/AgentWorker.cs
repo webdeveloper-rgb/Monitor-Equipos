@@ -61,8 +61,21 @@ namespace MonitorAgent.Service
             string json = JsonConvert.SerializeObject(report, Formatting.None, JsonDefaults.Settings);
 
             Outbox.Flush(cfg, state.MachineId);
-            if (ApiClient.Send(cfg, state.MachineId, json, out var error))
+            if (ApiClient.Send(cfg, state.MachineId, json, out var error, out var eventExtractionMode))
             {
+                if (eventExtractionMode == "standard" || eventExtractionMode == "full")
+                {
+                    if (state.EventExtractionMode != eventExtractionMode)
+                    {
+                        state.EventExtractionMode = eventExtractionMode;
+                        state.EventLogCursors.Clear();
+                        Log.Info("Modo de extracción de eventos actualizado: " + eventExtractionMode);
+                    }
+                }
+                else
+                {
+                    Log.Error("El servidor aceptó el informe pero no devolvió un modo de extracción válido.");
+                }
                 state.Save();
                 Log.Info("Informe enviado (" + report.Events.Count + " eventos, " + report.Disks.Count + " discos)");
             }

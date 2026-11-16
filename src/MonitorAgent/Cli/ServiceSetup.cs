@@ -18,6 +18,13 @@ namespace MonitorAgent.Cli
             var cfg = AgentConfig.Load();
             if (options.TryGetValue("url", out var url) && url != "") cfg.ApiUrl = url;
             if (options.TryGetValue("token", out var token) && token != "") cfg.ApiToken = token;
+            if (options.TryGetValue("rustdesk-id", out var rustDeskId) && rustDeskId != "")
+            {
+                rustDeskId = rustDeskId.Trim();
+                if (!Regex.IsMatch(rustDeskId, @"\A[A-Za-z0-9][A-Za-z0-9 ._-]{0,127}\z"))
+                    throw new InvalidOperationException("--rustdesk-id no tiene un formato válido.");
+                cfg.RustDeskId = rustDeskId;
+            }
             if (options.TryGetValue("interval", out var iv) && int.TryParse(iv, out var minutes)) cfg.IntervalMinutes = minutes;
             if (string.IsNullOrWhiteSpace(cfg.ApiUrl)) throw new InvalidOperationException("Falta --url");
             if (!Uri.TryCreate(cfg.ApiUrl, UriKind.Absolute, out var ingestUri) || ingestUri.Scheme != Uri.UriSchemeHttps)

@@ -8,6 +8,7 @@ namespace MonitorAgent.Infrastructure
     sealed class AgentState
     {
         public string MachineId { get; set; }
+        public string EventExtractionMode { get; set; } = "standard";
         public Dictionary<string, EventLogCursor> EventLogCursors { get; set; } =
             new Dictionary<string, EventLogCursor>(StringComparer.OrdinalIgnoreCase);
 
@@ -29,6 +30,8 @@ namespace MonitorAgent.Infrastructure
             }
             if (state.EventLogCursors == null)
                 state.EventLogCursors = new Dictionary<string, EventLogCursor>(StringComparer.OrdinalIgnoreCase);
+            if (state.EventExtractionMode != "standard" && state.EventExtractionMode != "full")
+                state.EventExtractionMode = "standard";
             return state;
         }
 
