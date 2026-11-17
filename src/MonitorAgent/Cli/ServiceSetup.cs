@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.ServiceProcess;
 using System.Security.Principal;
 using System.Text.RegularExpressions;
 using MonitorAgent.Api;
@@ -64,11 +65,33 @@ namespace MonitorAgent.Cli
 
             string exe = Process.GetCurrentProcess().MainModule.FileName;
             string name = AppInfo.ServiceName;
-            Sc("create " + name + " binPath= \"" + exe + "\" start= delayed-auto obj= LocalSystem DisplayName= \"Monitor Agent\"");
-            Sc("description " + name + " \"Agente de monitorizacion de hardware y eventos\"");
+            StopExistingService(name);
+
+            int result = Sc("config " + name + " binPath= \"" + exe + "\" start= delayed-auto obj= LocalSystem DisplayName= \"Monitor Agent\"");
+            if (result != 0)
+            {
+                result = Sc("create " + name + " binPath= \"" + exe + "\" start= delayed-auto obj= LocalSystem DisplayName= \"Monitor Agent\"");
+                if (result != 0)
+                    throw new InvalidOperationException("No se pudo crear ni actualizar el servicio MonitorAgent (sc.exe " + result + ").");
+            }
+            if (Sc("description " + name + " \"Agente de monitorizacion de hardware y eventos\"") != 0)
+                throw new InvalidOperationException("No se pudo actualizar la descripcion del servicio MonitorAgent.");
             Sc("failure " + name + " reset= 86400 actions= restart/60000/restart/60000/restart/60000");
-            Sc("start " + name);
+            if (Sc("start " + name) != 0)
+                throw new InvalidOperationException("No se pudo iniciar el servicio MonitorAgent.");
             Console.WriteLine("Instalado. Config en: " + AppInfo.DataDir);
+        }
+
+        static void StopExistingService(string name)
+        {
+            using (var service = ServiceController.GetServices().FirstOrDefault(s =>
+                string.Equals(s.ServiceName, name, StringComparison.OrdinalIgnoreCase)))
+            {
+                if (service == null || service.Status == ServiceControllerStatus.Stopped)
+                    return;
+                service.Stop();
+                service.WaitForStatus(ServiceControllerStatus.Stopped, TimeSpan.FromSeconds(30));
+            }
         }
 
         public static void Uninstall()
@@ -85,7 +108,7 @@ namespace MonitorAgent.Cli
                     throw new InvalidOperationException("Ejecuta este comando como Administrador.");
         }
 
-        static void Sc(string arguments)
+        static int Sc(string arguments)
         {
             var psi = new ProcessStartInfo("sc.exe", arguments)
             {
@@ -97,6 +120,7 @@ namespace MonitorAgent.Cli
             {
                 Console.Write(p.StandardOutput.ReadToEnd());
                 p.WaitForExit();
+                return p.ExitCode;
             }
         }
     }
