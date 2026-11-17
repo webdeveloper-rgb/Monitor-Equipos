@@ -14,6 +14,7 @@ namespace MonitorAgent.Models
         public DateTime TimestampUtc { get; set; }
 
         public SystemInfo System { get; set; }
+        public SoftwareInventory Software { get; set; }
         public BoardInfo Board { get; set; }
         public List<CpuInfo> Cpus { get; set; } = new List<CpuInfo>();
         public List<RamModule> Ram { get; set; } = new List<RamModule>();
@@ -25,5 +26,13 @@ namespace MonitorAgent.Models
 
         public List<EventItem> Events { get; set; } = new List<EventItem>();
         public List<string> CollectionErrors { get; set; } = new List<string>();
+    }
+
+    public class SoftwareInventory
+    {
+        public string WindowsRelease { get; set; }
+        public string WindowsLicenseStatus { get; set; }
+        public List<string> AntivirusProducts { get; set; } = new List<string>();
+        public List<string> BackupProducts { get; set; } = new List<string>();
     }
 }

@@ -20,6 +20,7 @@ namespace MonitorAgent.Service
         public static ReportBuilder CreateDefault() => new ReportBuilder(new ICollector[]
         {
             new SystemCollector(),
+            new SoftwareInventoryCollector(),
             new BoardCollector(),
             new CpuCollector(),
             new RamCollector(),
