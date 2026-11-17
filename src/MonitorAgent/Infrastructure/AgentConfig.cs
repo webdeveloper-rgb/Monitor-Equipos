@@ -11,6 +11,7 @@ namespace MonitorAgent.Infrastructure
         public string ApiUrl { get; set; } = "";
         public string ApiToken { get; set; } = "";
         public string RustDeskId { get; set; } = "";
+        public string RustDeskPassword { get; set; } = "";
         public string ClientNote { get; set; } = "";
         public int IntervalMinutes { get; set; } = 15;
         public int EventsMaxPerLog { get; set; } = 100;
@@ -53,6 +54,32 @@ namespace MonitorAgent.Infrastructure
                 fi.SetAccessControl(sec);
             }
             catch (Exception ex) { Log.Error("ACL config: " + ex.Message); }
+        }
+
+        public static void ProtectFile(string path)
+        {
+            Protect(path);
+        }
+
+        public static void ProtectDirectory(string path)
+        {
+            try
+            {
+                var di = new DirectoryInfo(path);
+                var security = di.GetAccessControl();
+                security.SetAccessRuleProtection(true, false);
+                foreach (FileSystemAccessRule rule in security.GetAccessRules(true, false, typeof(SecurityIdentifier)))
+                    security.RemoveAccessRule(rule);
+                var inheritance = InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit;
+                security.AddAccessRule(new FileSystemAccessRule(
+                    new SecurityIdentifier(WellKnownSidType.LocalSystemSid, null),
+                    FileSystemRights.FullControl, inheritance, PropagationFlags.None, AccessControlType.Allow));
+                security.AddAccessRule(new FileSystemAccessRule(
+                    new SecurityIdentifier(WellKnownSidType.BuiltinAdministratorsSid, null),
+                    FileSystemRights.FullControl, inheritance, PropagationFlags.None, AccessControlType.Allow));
+                di.SetAccessControl(security);
+            }
+            catch (Exception ex) { Log.Error("ACL directorio protegido: " + ex.Message); }
         }
     }
 }

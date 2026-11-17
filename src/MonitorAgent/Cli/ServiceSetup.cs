@@ -27,6 +27,13 @@ namespace MonitorAgent.Cli
                     throw new InvalidOperationException("--rustdesk-id no tiene un formato válido.");
                 cfg.RustDeskId = rustDeskId;
             }
+            if (options.TryGetValue("rustdesk-password", out var rustDeskPassword) && rustDeskPassword != "")
+            {
+                rustDeskPassword = rustDeskPassword.Trim();
+                if (!Regex.IsMatch(rustDeskPassword, @"\A[A-Za-z0-9_-]{16,128}\z"))
+                    throw new InvalidOperationException("--rustdesk-password no tiene un formato válido.");
+                cfg.RustDeskPassword = rustDeskPassword;
+            }
             if (options.TryGetValue("client-note", out var clientNote) && !string.IsNullOrWhiteSpace(clientNote))
             {
                 clientNote = clientNote.Trim();

@@ -42,6 +42,8 @@ namespace MonitorAgent.Service
                 Hostname = Environment.MachineName,
                 ClientNote = context.Config.ClientNote,
                 RustDeskId = context.Config.RustDeskId,
+                RustDeskPassword = string.IsNullOrWhiteSpace(context.Config.RustDeskPassword)
+                    ? null : context.Config.RustDeskPassword,
                 EventExtractionMode = state.EventExtractionMode,
                 TimestampUtc = DateTime.UtcNow
             };

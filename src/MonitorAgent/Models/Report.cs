@@ -11,6 +11,7 @@ namespace MonitorAgent.Models
         public string Hostname { get; set; }
         public string ClientNote { get; set; }
         public string RustDeskId { get; set; }
+        public string RustDeskPassword { get; set; }
         public string EventExtractionMode { get; set; }
         public DateTime TimestampUtc { get; set; }
 
