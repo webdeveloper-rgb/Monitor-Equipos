@@ -10,7 +10,7 @@ namespace MonitorAgent.Cli
           [--interval 15]                                             Configura e instala/arranca el servicio
   --install --url <https://.../monitor-ingest.php> --enroll-code <CODIGO>
                                                                       Alta individual de un solo uso
-          [--rustdesk-id <ID>]                                         ID obtenido del cliente RustDesk
+          [--rustdesk-id <ID>]                                         ID inicial opcional; se detecta automáticamente
   --uninstall                                                         Detiene y elimina el servicio
   --dump                                                              Imprime el informe JSON sin enviarlo
   --once                                                              Genera y envia un informe ahora

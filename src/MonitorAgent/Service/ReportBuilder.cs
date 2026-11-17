@@ -28,6 +28,7 @@ namespace MonitorAgent.Service
             new SmartCollector(),
             new VolumeCollector(),
             new BatteryCollector(),
+            new RustDeskCollector(),
             new EventLogCollector()
         });
 
