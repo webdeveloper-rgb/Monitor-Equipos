@@ -22,7 +22,14 @@ namespace MonitorAgent.Cli
             for (int i = 0; i < args.Length; i++)
             {
                 if (!args[i].StartsWith("--")) continue;
-                string key = args[i].Substring(2);
+                string argument = args[i].Substring(2);
+                int equals = argument.IndexOf('=');
+                if (equals >= 0)
+                {
+                    d[argument.Substring(0, equals)] = argument.Substring(equals + 1);
+                    continue;
+                }
+                string key = argument;
                 string val = (i + 1 < args.Length && !args[i + 1].StartsWith("--")) ? args[++i] : "";
                 d[key] = val;
             }
