@@ -9,6 +9,7 @@ namespace MonitorAgent.Models
         public string MachineId { get; set; }
         public string HardwareUuid { get; set; }
         public string Hostname { get; set; }
+        public string ClientNote { get; set; }
         public string RustDeskId { get; set; }
         public string EventExtractionMode { get; set; }
         public DateTime TimestampUtc { get; set; }

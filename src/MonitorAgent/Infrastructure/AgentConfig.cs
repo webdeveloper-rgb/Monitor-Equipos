@@ -11,6 +11,7 @@ namespace MonitorAgent.Infrastructure
         public string ApiUrl { get; set; } = "";
         public string ApiToken { get; set; } = "";
         public string RustDeskId { get; set; } = "";
+        public string ClientNote { get; set; } = "";
         public int IntervalMinutes { get; set; } = 15;
         public int EventsMaxPerLog { get; set; } = 100;
         public string[] EventLogs { get; set; } = new[] { "System", "Application" };

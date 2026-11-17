@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Security.Principal;
 using System.Text.RegularExpressions;
 using MonitorAgent.Api;
@@ -24,6 +25,13 @@ namespace MonitorAgent.Cli
                 if (!Regex.IsMatch(rustDeskId, @"\A[A-Za-z0-9][A-Za-z0-9 ._-]{0,127}\z"))
                     throw new InvalidOperationException("--rustdesk-id no tiene un formato válido.");
                 cfg.RustDeskId = rustDeskId;
+            }
+            if (options.TryGetValue("client-note", out var clientNote) && !string.IsNullOrWhiteSpace(clientNote))
+            {
+                clientNote = clientNote.Trim();
+                if (clientNote.Length > 160 || clientNote.Any(char.IsControl))
+                    throw new InvalidOperationException("--client-note admite hasta 160 caracteres sin controles.");
+                cfg.ClientNote = clientNote;
             }
             if (options.TryGetValue("interval", out var iv) && int.TryParse(iv, out var minutes)) cfg.IntervalMinutes = minutes;
             if (string.IsNullOrWhiteSpace(cfg.ApiUrl)) throw new InvalidOperationException("Falta --url");

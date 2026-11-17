@@ -7,7 +7,7 @@ namespace MonitorAgent.Cli
     {
         public const string Help = @"MonitorAgent
   --install --url <https://.../monitor-ingest.php> --token <TOKEN>
-          [--interval 15]                                             Configura e instala/arranca el servicio
+          [--interval 15] [--client-note <NOTA>]                      Configura e instala/arranca el servicio
   --install --url <https://.../monitor-ingest.php> --enroll-code <CODIGO>
                                                                       Alta individual de un solo uso
           [--rustdesk-id <ID>]                                         ID inicial opcional; se detecta automáticamente
