@@ -5,6 +5,7 @@ using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
 using System.Linq;
+using MonitorAgent.Models;
 using MonitorAgent.Infrastructure;
 using Newtonsoft.Json;
 
@@ -148,6 +149,68 @@ namespace MonitorAgent.Api
                                 return false;
                             }
                         }
+                    }
+                }
+            }
+            catch (Exception ex) { error = ex.Message; return false; }
+        }
+
+        public static bool SendBackupActivity(AgentConfig cfg, BackupActivitySnapshot snapshot, out string error)
+        {
+            try
+            {
+                var ingestUri = new Uri(cfg.ApiUrl, UriKind.Absolute);
+                if (ingestUri.Scheme != Uri.UriSchemeHttps)
+                    throw new InvalidOperationException("La URL de ingesta debe usar HTTPS.");
+
+                var tokenUri = new Uri(ingestUri, "monitor-token.php");
+                string temporaryToken;
+                using (var tokenReq = new HttpRequestMessage(HttpMethod.Post, tokenUri))
+                {
+                    tokenReq.Headers.Authorization = new AuthenticationHeaderValue("Bearer", cfg.ApiToken);
+                    tokenReq.Headers.Add("X-Api-Key", cfg.ApiToken);
+                    tokenReq.Headers.Add("X-Machine-Id", snapshot.MachineId);
+                    tokenReq.Content = new StringContent(
+                        JsonConvert.SerializeObject(new { machineId = snapshot.MachineId }),
+                        Encoding.UTF8,
+                        "application/json");
+                    using (var tokenResp = Http.SendAsync(tokenReq).GetAwaiter().GetResult())
+                    {
+                        if (!tokenResp.IsSuccessStatusCode)
+                        {
+                            error = "Token temporal: " + (int)tokenResp.StatusCode + " " + tokenResp.ReasonPhrase;
+                            return false;
+                        }
+                        var tokenData = JsonConvert.DeserializeObject<TokenResponse>(tokenResp.Content.ReadAsStringAsync().GetAwaiter().GetResult());
+                        temporaryToken = tokenData?.Token;
+                    }
+                }
+                if (string.IsNullOrWhiteSpace(temporaryToken)
+                    || !System.Text.RegularExpressions.Regex.IsMatch(temporaryToken, @"\Amtr_[0-9a-f]{64}\z"))
+                {
+                    error = "El servidor devolvió un token temporal no válido.";
+                    return false;
+                }
+
+                var statusUri = new Uri(ingestUri, "monitor-backup-status.php");
+                using (var req = new HttpRequestMessage(HttpMethod.Post, statusUri))
+                {
+                    req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", temporaryToken);
+                    req.Headers.Add("X-Api-Key", temporaryToken);
+                    req.Headers.Add("X-Machine-Id", snapshot.MachineId);
+                    req.Content = new StringContent(JsonConvert.SerializeObject(snapshot, JsonDefaults.Settings), Encoding.UTF8, "application/json");
+                    using (var resp = Http.SendAsync(req).GetAwaiter().GetResult())
+                    {
+                        if (resp.IsSuccessStatusCode) { error = null; return true; }
+                        error = (int)resp.StatusCode + " " + resp.ReasonPhrase;
+                        string detail = resp.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                        if (!string.IsNullOrWhiteSpace(detail))
+                        {
+                            detail = new string(detail.Where(c => !char.IsControl(c) || c == '\t').ToArray()).Trim();
+                            if (detail.Length > 300) detail = detail.Substring(0, 300);
+                            error += ": " + detail;
+                        }
+                        return false;
                     }
                 }
             }

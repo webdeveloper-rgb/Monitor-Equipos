@@ -11,19 +11,61 @@ namespace MonitorAgent.Service
     sealed class AgentWorker
     {
         readonly ManualResetEvent _stop = new ManualResetEvent(false);
+        readonly ManualResetEvent _backupStop = new ManualResetEvent(false);
         readonly ReportBuilder _builder = ReportBuilder.CreateDefault();
         Thread _thread;
+        Thread _backupThread;
 
         public void Start(int initialDelaySeconds)
         {
             _thread = new Thread(() => Loop(initialDelaySeconds)) { IsBackground = true, Name = "agent-loop" };
             _thread.Start();
+            _backupThread = new Thread(BackupActivityLoop) { IsBackground = true, Name = "backup-activity-loop" };
+            _backupThread.Start();
         }
 
         public void Stop()
         {
             _stop.Set();
+            _backupStop.Set();
             _thread?.Join(15000);
+            _backupThread?.Join(15000);
+        }
+
+        void BackupActivityLoop()
+        {
+            if (_backupStop.WaitOne(TimeSpan.FromSeconds(15))) return;
+            var state = new BackupActivityPollState();
+            while (!_backupStop.WaitOne(0))
+            {
+                try
+                {
+                    var cfg = AgentConfig.Load();
+                    var snapshot = BackupActivityCollector.Collect(cfg, state);
+                    string hash = BackupActivityCollector.Hash(snapshot);
+                    DateTime now = DateTime.UtcNow;
+                    bool changed = !string.Equals(hash, state.LastHash, StringComparison.Ordinal);
+                    bool heartbeatDue = !state.LastSentUtc.HasValue
+                        || now - state.LastSentUtc.Value >= TimeSpan.FromMinutes(2);
+                    if (snapshot.ScannedProducts.Count > 0 && (changed || heartbeatDue) && !string.IsNullOrWhiteSpace(cfg.ApiUrl)
+                        && !string.IsNullOrWhiteSpace(cfg.ApiToken))
+                    {
+                        snapshot.MachineId = AgentState.Load().MachineId;
+                        if (ApiClient.SendBackupActivity(cfg, snapshot, out var error))
+                        {
+                            state.LastHash = hash;
+                            state.LastSentUtc = now;
+                            Log.Info("Estado de copias enviado (" + snapshot.Activities.Count + " en curso)");
+                        }
+                        else
+                        {
+                            Log.Error("Envio de estado de copias fallido: " + error);
+                        }
+                    }
+                }
+                catch (Exception ex) { Log.Error("Estado de copias: " + ex.Message); }
+                if (_backupStop.WaitOne(TimeSpan.FromMinutes(1))) return;
+            }
         }
 
         void Loop(int initialDelaySeconds)

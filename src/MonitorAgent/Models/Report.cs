@@ -30,6 +30,25 @@ namespace MonitorAgent.Models
         public List<string> CollectionErrors { get; set; } = new List<string>();
     }
 
+    public class BackupActivitySnapshot
+    {
+        public string MachineId { get; set; }
+        public DateTime ObservedAtUtc { get; set; }
+        public List<string> ScannedProducts { get; set; } = new List<string>();
+        public List<BackupActivity> Activities { get; set; } = new List<BackupActivity>();
+    }
+
+    public class BackupActivity
+    {
+        public string Product { get; set; }
+        public string State { get; set; } = "running";
+        public string TargetHostname { get; set; }
+        public string SessionKey { get; set; }
+        public DateTime StartedAtUtc { get; set; }
+        public int ActiveOperations { get; set; } = 1;
+        public string Source { get; set; }
+    }
+
     public class SoftwareInventory
     {
         public string WindowsRelease { get; set; }

@@ -12,6 +12,11 @@ namespace MonitorAgent.Infrastructure
         public int EventLogScanOffset { get; set; }
         public Dictionary<string, EventLogCursor> EventLogCursors { get; set; } =
             new Dictionary<string, EventLogCursor>(StringComparer.OrdinalIgnoreCase);
+        public long? AcronisApplicationLastRecordId { get; set; }
+        public Dictionary<string, AcronisOperationState> ActiveAcronisOperations { get; set; } =
+            new Dictionary<string, AcronisOperationState>(StringComparer.OrdinalIgnoreCase);
+        public string LastBackupActivityHash { get; set; }
+        public DateTime? LastBackupActivitySentUtc { get; set; }
 
         public static AgentState Load()
         {
@@ -31,6 +36,8 @@ namespace MonitorAgent.Infrastructure
             }
             if (state.EventLogCursors == null)
                 state.EventLogCursors = new Dictionary<string, EventLogCursor>(StringComparer.OrdinalIgnoreCase);
+            if (state.ActiveAcronisOperations == null)
+                state.ActiveAcronisOperations = new Dictionary<string, AcronisOperationState>(StringComparer.OrdinalIgnoreCase);
             if (state.EventExtractionMode != "standard" && state.EventExtractionMode != "full")
                 state.EventExtractionMode = "standard";
             return state;
@@ -61,6 +68,11 @@ namespace MonitorAgent.Infrastructure
             }
             catch (Exception ex) { Log.Error("state: " + ex.Message); }
         }
+    }
+
+    sealed class AcronisOperationState
+    {
+        public DateTime StartedAtUtc { get; set; }
     }
 
     sealed class EventLogCursor

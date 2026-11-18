@@ -84,7 +84,7 @@ namespace MonitorAgent.Collectors
             return found.OrderBy(x => x, StringComparer.OrdinalIgnoreCase).Take(20).ToList();
         }
 
-        static List<string> ReadBackupProducts()
+        internal static List<string> ReadBackupProducts()
         {
             return ReadInstalledProductNames()
                 .Where(name => Matches(name, BackupKeywords))
