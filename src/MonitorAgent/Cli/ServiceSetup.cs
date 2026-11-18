@@ -6,6 +6,7 @@ using System.Linq;
 using System.ServiceProcess;
 using System.Security.Principal;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using MonitorAgent.Api;
 using MonitorAgent.Infrastructure;
 
@@ -127,12 +128,23 @@ namespace MonitorAgent.Cli
             {
                 UseShellExecute = false,
                 CreateNoWindow = true,
-                RedirectStandardOutput = true
+                RedirectStandardOutput = true,
+                RedirectStandardError = true
             };
             using (var p = Process.Start(psi))
             {
-                Console.Write(p.StandardOutput.ReadToEnd());
-                p.WaitForExit();
+                if (p == null) throw new InvalidOperationException("No se pudo iniciar sc.exe.");
+                Task<string> stdout = p.StandardOutput.ReadToEndAsync();
+                Task<string> stderr = p.StandardError.ReadToEndAsync();
+                if (!p.WaitForExit(30000))
+                {
+                    try { p.Kill(); } catch { }
+                    try { p.WaitForExit(5000); } catch { }
+                    throw new TimeoutException("sc.exe no respondió dentro de 30 segundos al ejecutar: " + arguments.Split(' ')[0]);
+                }
+                Task.WaitAll(stdout, stderr);
+                if (!string.IsNullOrWhiteSpace(stdout.Result)) Console.Write(stdout.Result);
+                if (!string.IsNullOrWhiteSpace(stderr.Result)) Console.Error.Write(stderr.Result);
                 return p.ExitCode;
             }
         }
