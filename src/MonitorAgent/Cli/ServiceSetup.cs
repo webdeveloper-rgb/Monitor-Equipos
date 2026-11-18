@@ -140,7 +140,7 @@ namespace MonitorAgent.Cli
                 {
                     try { p.Kill(); } catch { }
                     try { p.WaitForExit(5000); } catch { }
-                    throw new TimeoutException("sc.exe no respondió dentro de 30 segundos al ejecutar: " + arguments.Split(' ')[0]);
+                    throw new System.TimeoutException("sc.exe no respondió dentro de 30 segundos al ejecutar: " + arguments.Split(' ')[0]);
                 }
                 Task.WaitAll(stdout, stderr);
                 if (!string.IsNullOrWhiteSpace(stdout.Result)) Console.Write(stdout.Result);
