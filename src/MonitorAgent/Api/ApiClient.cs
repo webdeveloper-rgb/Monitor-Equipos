@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
+using System.Linq;
 using MonitorAgent.Infrastructure;
 using Newtonsoft.Json;
 
@@ -134,6 +135,16 @@ namespace MonitorAgent.Api
                                     return true;
                                 }
                                 error = (int)resp.StatusCode + " " + resp.ReasonPhrase;
+                                if ((int)resp.StatusCode == 422)
+                                {
+                                    string detail = resp.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                                    if (!string.IsNullOrWhiteSpace(detail))
+                                    {
+                                        detail = new string(detail.Where(c => !char.IsControl(c) || c == '\t').ToArray()).Trim();
+                                        if (detail.Length > 500) detail = detail.Substring(0, 500);
+                                        error += ": " + detail;
+                                    }
+                                }
                                 return false;
                             }
                         }
