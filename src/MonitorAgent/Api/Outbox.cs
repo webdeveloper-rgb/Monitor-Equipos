@@ -14,13 +14,29 @@ namespace MonitorAgent.Api
         {
             Directory.CreateDirectory(AppInfo.OutboxDir);
             AgentConfig.ProtectDirectory(AppInfo.OutboxDir);
-            string name = DateTime.UtcNow.ToString("yyyyMMddHHmmssfff") + ".json";
+            string name = DateTime.UtcNow.ToString("yyyyMMddHHmmssfff") + "-" + Guid.NewGuid().ToString("N") + ".json";
             string path = Path.Combine(AppInfo.OutboxDir, name);
-            File.WriteAllText(path, json);
-            AgentConfig.ProtectFile(path);
+            string temporaryPath = path + ".partial";
+            try
+            {
+                File.WriteAllText(temporaryPath, json);
+                AgentConfig.ProtectFile(temporaryPath);
+                File.Move(temporaryPath, path);
+            }
+            catch
+            {
+                try { if (File.Exists(temporaryPath)) File.Delete(temporaryPath); } catch { }
+                throw;
+            }
 
             var files = Directory.GetFiles(AppInfo.OutboxDir, "*.json").OrderBy(f => f).ToList();
-            for (int i = 0; i < files.Count - MaxFiles; i++) File.Delete(files[i]);
+            int overflow = files.Count - MaxFiles;
+            for (int i = 0; i < overflow; i++)
+            {
+                try { File.Delete(files[i]); }
+                catch (Exception ex) { Log.Error("No se pudo eliminar el informe antiguo de la cola: " + ex.Message); }
+            }
+            if (overflow > 0) Log.Error("La cola alcanzó su límite; se descartaron " + overflow + " informes antiguos.");
         }
 
         public static void Flush(AgentConfig cfg, string machineId)

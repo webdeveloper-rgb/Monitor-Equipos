@@ -41,7 +41,23 @@ namespace MonitorAgent.Infrastructure
             try
             {
                 Directory.CreateDirectory(AppInfo.DataDir);
-                File.WriteAllText(AppInfo.StateFile, JsonConvert.SerializeObject(this, Formatting.Indented));
+                AgentConfig.ProtectDirectory(AppInfo.DataDir);
+                string temporaryPath = AppInfo.StateFile + ".partial";
+                try
+                {
+                    File.WriteAllText(temporaryPath, JsonConvert.SerializeObject(this, Formatting.Indented));
+                    AgentConfig.ProtectFile(temporaryPath);
+                    if (File.Exists(AppInfo.StateFile))
+                        File.Replace(temporaryPath, AppInfo.StateFile, null);
+                    else
+                        File.Move(temporaryPath, AppInfo.StateFile);
+                    AgentConfig.ProtectFile(AppInfo.StateFile);
+                }
+                catch
+                {
+                    try { if (File.Exists(temporaryPath)) File.Delete(temporaryPath); } catch { }
+                    throw;
+                }
             }
             catch (Exception ex) { Log.Error("state: " + ex.Message); }
         }

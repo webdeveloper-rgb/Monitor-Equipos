@@ -16,6 +16,8 @@ Publica un JSON HTTPS en una URL estable, por ejemplo:
 
 `version` debe ser una versión numérica compatible con `System.Version`; `installerUrl` puede ser absoluta o relativa al manifiesto y siempre debe resolver a HTTPS. El hash se calcula sobre el instalador terminado, después de compilarlo.
 
+El agente limita el manifiesto a 64 KiB y el instalador a 500 MiB. Descarga el instalador en un archivo temporal, valida el SHA-256 y solo entonces lo mueve a su nombre final. Si la descarga o la validación falla, elimina el archivo temporal y no inicia el instalador.
+
 Configura la URL durante la instalación del agente:
 
 ```text
@@ -26,6 +28,6 @@ También se puede establecer `UpdateManifestUrl` en `%ProgramData%\MonitorAgent\
 
 ## Inno Setup
 
-El instalador debe actualizar la misma aplicación (mismo `AppId` y directorio de instalación) y aceptar los parámetros silenciosos estándar de Inno Setup: `/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-`. El agente detiene el servicio antes de ejecutarlo; al terminar, intenta arrancar `MonitorAgent` si el instalador lo dejó detenido.
+El instalador debe actualizar la misma aplicación (mismo `AppId` y directorio de instalación) y aceptar los parámetros silenciosos estándar de Inno Setup: `/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-`. El agente detiene el servicio antes de ejecutarlo; en cualquier salida del instalador intenta dejar `MonitorAgent` en estado activo y espera hasta 90 segundos. Si el arranque falla, registra el error para diagnóstico.
 
-El manifiesto y el instalador deben servirse por HTTPS. El SHA-256 detecta descargas alteradas o incompletas, pero como el hash y el instalador vienen del mismo origen no sustituye la firma Authenticode del instalador. Para proteger también frente a una publicación comprometida, firma el instalador con el certificado de la organización y añade validación de ese editor antes de desplegar en producción.
+El manifiesto y el instalador deben servirse por HTTPS. El SHA-256 detecta descargas alteradas o incompletas, pero como el hash y el instalador vienen del mismo origen no sustituye la firma Authenticode del instalador. Para proteger también frente a una publicación comprometida, firma el instalador con el certificado de la organización y añade validación del certificado editor antes de desplegar en producción. Esa validación requiere el certificado o su huella aprobada, que aún no está configurada en el workspace.

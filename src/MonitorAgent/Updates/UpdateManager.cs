@@ -27,7 +27,7 @@ namespace MonitorAgent.Updates
             if (string.IsNullOrWhiteSpace(cfg.UpdateManifestUrl)) return;
 
             var manifestUri = RequireHttps(cfg.UpdateManifestUrl);
-            var manifestJson = Http.GetStringAsync(manifestUri).GetAwaiter().GetResult();
+            var manifestJson = DownloadManifest(manifestUri);
             var manifest = JsonConvert.DeserializeObject<UpdateManifest>(manifestJson);
             if (manifest == null || !Version.TryParse(manifest.Version, out var latest)
                 || !Version.TryParse(AppInfo.Version, out var current))
@@ -43,13 +43,26 @@ namespace MonitorAgent.Updates
             Directory.CreateDirectory(AppInfo.DataDir);
             AgentConfig.ProtectDirectory(AppInfo.DataDir);
             var installerPath = Path.Combine(AppInfo.DataDir, "SauberDesk-update-" + latest + ".exe");
-            Download(installerUri, installerPath);
-            AgentConfig.ProtectFile(installerPath);
-            if (!string.Equals(HashFile(installerPath), manifest.Sha256, StringComparison.OrdinalIgnoreCase))
+            var downloadPath = installerPath + ".partial";
+            try
             {
-                File.Delete(installerPath);
-                throw new InvalidDataException("El SHA-256 del instalador no coincide con el manifiesto.");
+                if (File.Exists(downloadPath)) File.Delete(downloadPath);
+                Download(installerUri, downloadPath);
+                AgentConfig.ProtectFile(downloadPath);
+                if (!string.Equals(HashFile(downloadPath), manifest.Sha256, StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidDataException("El SHA-256 del instalador no coincide con el manifiesto.");
+
+                if (File.Exists(installerPath))
+                    File.Replace(downloadPath, installerPath, null);
+                else
+                    File.Move(downloadPath, installerPath);
             }
+            catch
+            {
+                try { if (File.Exists(downloadPath)) File.Delete(downloadPath); } catch { }
+                throw;
+            }
+            AgentConfig.ProtectFile(installerPath);
 
             LaunchInstaller(installerPath, latest.ToString());
         }
@@ -59,6 +72,33 @@ namespace MonitorAgent.Updates
             if (!Uri.TryCreate(value, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps)
                 throw new InvalidDataException("La URL del manifiesto debe ser HTTPS.");
             return uri;
+        }
+
+        static string DownloadManifest(Uri uri)
+        {
+            const int maxBytes = 64 * 1024;
+            using (var response = Http.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead).GetAwaiter().GetResult())
+            {
+                response.EnsureSuccessStatusCode();
+                if (response.Content.Headers.ContentLength > maxBytes)
+                    throw new InvalidDataException("El manifiesto supera el tamaño máximo permitido.");
+
+                using (var input = response.Content.ReadAsStreamAsync().GetAwaiter().GetResult())
+                using (var output = new MemoryStream())
+                {
+                    var buffer = new byte[8192];
+                    int read;
+                    while ((read = input.Read(buffer, 0, buffer.Length)) > 0)
+                    {
+                        if (output.Length + read > maxBytes)
+                            throw new InvalidDataException("El manifiesto supera el tamaño máximo permitido.");
+                        output.Write(buffer, 0, read);
+                    }
+                    if (output.Length == 0)
+                        throw new InvalidDataException("El manifiesto está vacío.");
+                    return Encoding.UTF8.GetString(output.ToArray()).TrimStart('\uFEFF');
+                }
+            }
         }
 
         static void Download(Uri uri, string destination)
@@ -118,8 +158,12 @@ try {
 finally {
   try {
     $service = Get-Service -Name $serviceName -ErrorAction Stop
-    if ($service.Status -eq 'Stopped') { Start-Service -Name $serviceName }
-    Write-UpdateLog 'Servicio iniciado o ya estaba activo.'
+    if ($service.Status -ne 'Running') {
+      Start-Service -Name $serviceName
+      $service = Get-Service -Name $serviceName -ErrorAction Stop
+      $service.WaitForStatus('Running', [TimeSpan]::FromSeconds(90))
+    }
+    Write-UpdateLog 'Servicio activo tras la actualizacion.'
   } catch { Write-UpdateLog ('No se pudo iniciar el servicio: ' + $_.Exception.Message) }
 }
 ";
