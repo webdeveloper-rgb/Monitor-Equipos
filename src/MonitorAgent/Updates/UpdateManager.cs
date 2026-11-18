@@ -110,15 +110,18 @@ try {
     $service.WaitForStatus('Stopped', [TimeSpan]::FromSeconds(90))
   }
   Write-UpdateLog 'Servicio detenido; iniciando instalador.'
-  $arguments = '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP- /LOG="' + $logPath + '"'
+  $arguments = '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP- /LOG=""' + $logPath + '""'
   $process = Start-Process -FilePath $installer -ArgumentList $arguments -Wait -PassThru
   if ($process.ExitCode -ne 0) { throw ('El instalador terminó con código ' + $process.ExitCode) }
   Write-UpdateLog 'Instalador finalizado correctamente.'
+} catch { Write-UpdateLog ('Error de actualizacion: ' + $_.Exception.Message) }
+finally {
   try {
     $service = Get-Service -Name $serviceName -ErrorAction Stop
     if ($service.Status -eq 'Stopped') { Start-Service -Name $serviceName }
-  } catch { Write-UpdateLog ('No se pudo comprobar o iniciar el servicio: ' + $_.Exception.Message) }
-} catch { Write-UpdateLog ('Error de actualización: ' + $_.Exception.Message) }
+    Write-UpdateLog 'Servicio iniciado o ya estaba activo.'
+  } catch { Write-UpdateLog ('No se pudo iniciar el servicio: ' + $_.Exception.Message) }
+}
 ";
             var powershell = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System),
                 @"WindowsPowerShell\v1.0\powershell.exe");
