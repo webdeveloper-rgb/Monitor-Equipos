@@ -3,6 +3,7 @@ using System.Threading;
 using MonitorAgent.Api;
 using MonitorAgent.Collectors;
 using MonitorAgent.Infrastructure;
+using MonitorAgent.Updates;
 using Newtonsoft.Json;
 
 namespace MonitorAgent.Service
@@ -33,6 +34,9 @@ namespace MonitorAgent.Service
             {
                 try { RunOnce(); }
                 catch (Exception ex) { Log.Error("RunOnce: " + ex); }
+
+                try { UpdateManager.CheckAndInstall(AgentConfig.Load()); }
+                catch (Exception ex) { Log.Error("Actualizacion: " + ex); }
 
                 int minutes = Math.Max(1, AgentConfig.Load().IntervalMinutes);
                 if (_stop.WaitOne(TimeSpan.FromMinutes(minutes))) return;

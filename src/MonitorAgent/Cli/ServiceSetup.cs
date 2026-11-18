@@ -20,6 +20,8 @@ namespace MonitorAgent.Cli
             var cfg = AgentConfig.Load();
             if (options.TryGetValue("url", out var url) && url != "") cfg.ApiUrl = url;
             if (options.TryGetValue("token", out var token) && token != "") cfg.ApiToken = token;
+            if (options.TryGetValue("update-manifest", out var updateManifest) && updateManifest != "")
+                cfg.UpdateManifestUrl = updateManifest.Trim();
             if (options.TryGetValue("rustdesk-id", out var rustDeskId) && rustDeskId != "")
             {
                 rustDeskId = rustDeskId.Trim();
@@ -45,6 +47,10 @@ namespace MonitorAgent.Cli
             if (string.IsNullOrWhiteSpace(cfg.ApiUrl)) throw new InvalidOperationException("Falta --url");
             if (!Uri.TryCreate(cfg.ApiUrl, UriKind.Absolute, out var ingestUri) || ingestUri.Scheme != Uri.UriSchemeHttps)
                 throw new InvalidOperationException("--url debe ser una URL HTTPS absoluta.");
+            if (!string.IsNullOrWhiteSpace(cfg.UpdateManifestUrl)
+                && (!Uri.TryCreate(cfg.UpdateManifestUrl, UriKind.Absolute, out var updateUri)
+                    || updateUri.Scheme != Uri.UriSchemeHttps))
+                throw new InvalidOperationException("--update-manifest debe ser una URL HTTPS absoluta.");
 
             var enrollmentCode = options.TryGetValue("enroll-code", out var code) ? code : "";
             if (!string.IsNullOrEmpty(enrollmentCode))

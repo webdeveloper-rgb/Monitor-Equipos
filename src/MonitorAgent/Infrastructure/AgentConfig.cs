@@ -10,6 +10,7 @@ namespace MonitorAgent.Infrastructure
     {
         public string ApiUrl { get; set; } = "";
         public string ApiToken { get; set; } = "";
+        public string UpdateManifestUrl { get; set; } = "";
         public string RustDeskId { get; set; } = "";
         public string RustDeskPassword { get; set; } = "";
         public string ClientNote { get; set; } = "";
