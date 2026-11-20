@@ -1,0 +1,124 @@
+# Guardar como: .github/workflows/release.yml  (en el repositorio PRIVADO Monitor-Equipos)
+#
+# Cómo se usa:
+#   1. Cambias el agente y subes <Version> en el .csproj (por ejemplo 1.3.7 -> 1.3.8).
+#   2. git commit + git push a main.
+#   3. El workflow compila, genera el instalador y update.json y crea la release en agent-updates.
+#
+# Si haces push SIN subir <Version> (o con una versión menor/igual a la ya publicada),
+# no se publica nada: así un commit a medias nunca llega a los equipos.
+#
+# Requisitos: secret RELEASES_TOKEN (fine-grained PAT, solo sobre agent-updates, Contents: Read and write).
+# El .csproj debe tener <Version> y NO <AssemblyVersion>.
+
+name: Release
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'src/**'
+      - 'installer/MonitorAgent-update.iss'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  RELEASES_REPO: webdeveloper-rgb/agent-updates
+  PROJECT: src/MonitorAgent/MonitorAgent.csproj
+  ISS_FILE: installer/MonitorAgent-update.iss
+  OUTPUT_DIR: installer/Output
+
+jobs:
+  release:
+    runs-on: windows-latest
+    env:
+      GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Leer versión y decidir si hay que publicar
+        id: ver
+        shell: pwsh
+        run: |
+          $xml = [xml](Get-Content $env:PROJECT -Raw)
+          $v = $xml.Project.PropertyGroup | ForEach-Object { $_.Version } | Where-Object { $_ } | Select-Object -First 1
+          if (-not $v) { throw "Falta <Version> en $env:PROJECT" }
+          $v = ([string]$v).Trim()
+          $parts = $v.Split('.')
+          if ($parts.Count -eq 3) { $v4 = "$v.0" } elseif ($parts.Count -eq 4) { $v4 = $v } else { throw "Versión inválida: $v (usa X.Y.Z o X.Y.Z.0)" }
+          $p4 = $v4.Split('.')
+          if ($p4[3] -eq '0') { $tag = 'v' + ($p4[0..2] -join '.') } else { $tag = 'v' + $v4 }
+
+          # Última versión ya publicada en agent-updates (si hay alguna)
+          $skip = 'false'
+          $out = gh release view --repo $env:RELEASES_REPO --json tagName 2>$null
+          if ($LASTEXITCODE -eq 0 -and $out) {
+            $lt = ($out | ConvertFrom-Json).tagName.TrimStart('v')
+            if ($lt.Split('.').Count -eq 3) { $lt = "$lt.0" }
+            if ([version]$v4 -le [version]$lt) {
+              $skip = 'true'
+              Write-Host "::notice::La versión $v4 no es mayor que la última publicada ($lt). No se publica nada. Sube <Version> en el .csproj para lanzar una release."
+            }
+          }
+
+          "skip=$skip" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "VERSION4=$v4" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "TAG=$tag" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Compilar agente
+        if: steps.ver.outputs.skip != 'true'
+        shell: pwsh
+        run: dotnet build $env:PROJECT -c Release "-p:Version=$env:VERSION4"
+
+      # Si el ensamblado no queda con la versión esperada, el agente se reinstalaría en bucle.
+      - name: Comprobar versión del ejecutable
+        if: steps.ver.outputs.skip != 'true'
+        shell: pwsh
+        run: |
+          $exe = Join-Path (Split-Path $env:PROJECT) 'bin/Release/net48/MonitorAgent.exe'
+          if (-not (Test-Path $exe)) { throw "No se encontró $exe" }
+          $actual = [Reflection.AssemblyName]::GetAssemblyName((Resolve-Path $exe)).Version.ToString()
+          if ($actual -ne $env:VERSION4) { throw "El ejecutable es $actual pero se esperaba $env:VERSION4. Revisa que el .csproj no defina <AssemblyVersion>." }
+          Write-Host "Versión del ejecutable: $actual"
+
+      - name: Instalar Inno Setup
+        if: steps.ver.outputs.skip != 'true'
+        shell: pwsh
+        run: choco install innosetup -y --no-progress
+
+      - name: Generar instalador de actualización
+        if: steps.ver.outputs.skip != 'true'
+        shell: pwsh
+        run: |
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "/DMyAppVersion=$env:VERSION4" $env:ISS_FILE
+          if ($LASTEXITCODE -ne 0) { throw "ISCC falló ($LASTEXITCODE)" }
+
+      # Aquí iría la firma Authenticode del .exe si tienes certificado (recomendable).
+
+      - name: Generar update.json
+        if: steps.ver.outputs.skip != 'true'
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem $env:OUTPUT_DIR -Filter '*-setup.exe' | Select-Object -First 1
+          if (-not $exe) { throw "No se encontró el instalador en $env:OUTPUT_DIR" }
+          $hash = (Get-FileHash $exe.FullName -Algorithm SHA256).Hash.ToLower()
+          $url = "https://github.com/$env:RELEASES_REPO/releases/download/$env:TAG/$($exe.Name)"
+          $manifest = [ordered]@{ version = $env:VERSION4; installerUrl = $url; sha256 = $hash }
+          $json = $manifest | ConvertTo-Json
+          [IO.File]::WriteAllText("$PWD\update.json", $json, (New-Object Text.UTF8Encoding $false))
+          "EXE_PATH=$($exe.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Get-Content update.json
+
+      - name: Publicar release en agent-updates
+        if: steps.ver.outputs.skip != 'true'
+        shell: pwsh
+        run: |
+          $msg = git log -1 --pretty=%s
+          gh release create $env:TAG $env:EXE_PATH update.json `
+            --repo $env:RELEASES_REPO `
+            --title "Agente $env:TAG" `
+            --notes "Versión $env:VERSION4. $msg" `
+            --latest
+          if ($LASTEXITCODE -ne 0) { throw "No se pudo crear la release (código $LASTEXITCODE)" }
