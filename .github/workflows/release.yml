@@ -42,6 +42,7 @@ jobs:
         id: ver
         shell: pwsh
         run: |
+          if (-not $env:GH_TOKEN) { throw "El secret RELEASES_TOKEN no esta configurado en este repositorio (Settings > Secrets and variables > Actions > Repository secrets)." }
           $xml = [xml](Get-Content $env:PROJECT -Raw)
           $v = $xml.Project.PropertyGroup | ForEach-Object { $_.Version } | Where-Object { $_ } | Select-Object -First 1
           if (-not $v) { throw "Falta <Version> en $env:PROJECT" }
