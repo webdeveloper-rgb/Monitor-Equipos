@@ -7,6 +7,10 @@ namespace MonitorAgent.Infrastructure
     {
         public const string ServiceName = "MonitorAgent";
 
+        // Manifiesto de actualizaciones por defecto: se usa si config.json no define UpdateManifestUrl.
+        public const string DefaultUpdateManifestUrl =
+            "https://github.com/webdeveloper-rgb/agent-updates/releases/latest/download/update.json";
+
         public static readonly string Version =
             typeof(AppInfo).Assembly.GetName().Version.ToString();
 

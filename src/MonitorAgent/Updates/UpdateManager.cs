@@ -24,9 +24,9 @@ namespace MonitorAgent.Updates
 
         public static void CheckAndInstall(AgentConfig cfg)
         {
-            if (string.IsNullOrWhiteSpace(cfg.UpdateManifestUrl)) return;
-
-            var manifestUri = RequireHttps(cfg.UpdateManifestUrl);
+            var manifestUrl = string.IsNullOrWhiteSpace(cfg.UpdateManifestUrl)
+                ? AppInfo.DefaultUpdateManifestUrl : cfg.UpdateManifestUrl;
+            var manifestUri = RequireHttps(manifestUrl);
             var manifestJson = DownloadManifest(manifestUri);
             var manifest = JsonConvert.DeserializeObject<UpdateManifest>(manifestJson);
             if (manifest == null || !Version.TryParse(manifest.Version, out var latest)
