@@ -18,6 +18,8 @@ namespace MonitorAgent.Infrastructure
         public string LastBackupActivityHash { get; set; }
         public DateTime? LastBackupActivitySentUtc { get; set; }
 
+        public DateTime? LastInstalledProgramsUtc { get; set; }
+
         public static AgentState Load()
         {
             AgentState state = null;

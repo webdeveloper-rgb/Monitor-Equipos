@@ -24,6 +24,8 @@ namespace MonitorAgent.Models
         public List<DiskInfo> Disks { get; set; } = new List<DiskInfo>();
         public List<VolumeInfo> Volumes { get; set; } = new List<VolumeInfo>();
         public List<BatteryInfo> Batteries { get; set; } = new List<BatteryInfo>();
+
+        public List<InstalledProgram> InstalledPrograms { get; set; } = new List<InstalledProgram>();
         public bool? SmartPredictFailure { get; set; }
 
         public List<EventItem> Events { get; set; } = new List<EventItem>();
@@ -55,5 +57,16 @@ namespace MonitorAgent.Models
         public string WindowsLicenseStatus { get; set; }
         public List<string> AntivirusProducts { get; set; } = new List<string>();
         public List<string> BackupProducts { get; set; } = new List<string>();
+    }
+
+    public sealed class InstalledProgram
+    {
+        public string Name { get; set; }
+        public string Version { get; set; }
+        public string Publisher { get; set; }
+        public string InstallDate { get; set; }   // yyyy-MM-dd
+        public int? SizeMb { get; set; }
+        public string Architecture { get; set; }  // 32-bit / 64-bit
+        public string Scope { get; set; }         // machine / user
     }
 }

@@ -21,6 +21,7 @@ namespace MonitorAgent.Service
         {
             new SystemCollector(),
             new SoftwareInventoryCollector(),
+            new InstalledProgramsCollector(),
             new BoardCollector(),
             new CpuCollector(),
             new RamCollector(),
