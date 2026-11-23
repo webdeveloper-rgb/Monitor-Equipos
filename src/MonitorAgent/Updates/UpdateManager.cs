@@ -32,7 +32,11 @@ namespace MonitorAgent.Updates
             if (manifest == null || !Version.TryParse(manifest.Version, out var latest)
                 || !Version.TryParse(AppInfo.Version, out var current))
                 throw new InvalidDataException("El manifiesto o la versión del agente no tienen un formato válido.");
-            if (latest <= current) return;
+            if (latest <= current)
+            {
+                CleanupOldFiles();
+                return;
+            }
             if (!Regex.IsMatch(manifest.Sha256 ?? "", @"\A[0-9a-fA-F]{64}\z"))
                 throw new InvalidDataException("El manifiesto no contiene un SHA-256 válido.");
 
@@ -65,6 +69,33 @@ namespace MonitorAgent.Updates
             AgentConfig.ProtectFile(installerPath);
 
             LaunchInstaller(installerPath, latest.ToString());
+        }
+
+        // Ya estamos al día: borra instaladores descargados de versiones anteriores y logs antiguos.
+        static void CleanupOldFiles()
+        {
+            try
+            {
+                foreach (var file in Directory.GetFiles(AppInfo.DataDir, "SauberDesk-update-*"))
+                {
+                    var name = Path.GetFileName(file);
+                    if (name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)
+                        || name.EndsWith(".exe.partial", StringComparison.OrdinalIgnoreCase))
+                    {
+                        try { File.Delete(file); } catch { }
+                    }
+                }
+
+                var limit = DateTime.UtcNow.AddDays(-30);
+                foreach (var file in Directory.GetFiles(AppInfo.DataDir, "update-*.log"))
+                {
+                    if (File.GetLastWriteTimeUtc(file) < limit)
+                    {
+                        try { File.Delete(file); } catch { }
+                    }
+                }
+            }
+            catch (Exception ex) { Log.Error("Limpieza de actualizaciones: " + ex.Message); }
         }
 
         static Uri RequireHttps(string value)
