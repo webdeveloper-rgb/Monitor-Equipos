@@ -60,6 +60,7 @@ namespace MonitorAgent.Collectors
     }
     static class BackupActivityCollector
     {
+        static bool veeamModuleMissingLogged;
         static readonly IReadOnlyList<IBackupActivityProvider> Providers = new IBackupActivityProvider[]
         {
             new AcronisBackupActivityProvider(),
@@ -182,7 +183,17 @@ namespace MonitorAgent.Collectors
 $ErrorActionPreference = 'Stop'
 $WarningPreference = 'SilentlyContinue'
 $ProgressPreference = 'SilentlyContinue'
-$null = Import-Module Veeam.Backup.PowerShell -ErrorAction Stop
+$module = Get-Module -ListAvailable -Name Veeam.Backup.PowerShell | Select-Object -First 1
+$modulePath = if ($module) { $module.Path } else { $null }
+if ([string]::IsNullOrWhiteSpace($modulePath)) {
+  $manifest = Join-Path $env:ProgramFiles 'Veeam\Backup and Replication\Console\Veeam.Backup.PowerShell\Veeam.Backup.PowerShell.psd1'
+  if (Test-Path -LiteralPath $manifest) { $modulePath = $manifest }
+}
+if ([string]::IsNullOrWhiteSpace($modulePath)) {
+  ConvertTo-Json -InputObject ([pscustomobject]@{ moduleAvailable=$false; items=@() }) -Compress
+  exit 0
+}
+$null = Import-Module $modulePath -ErrorAction Stop
 $items = @()
 foreach ($session in @(Get-VBRBackupSession -State Working)) {
   $started = $session.CreationTime
@@ -193,10 +204,19 @@ foreach ($session in @(Get-VBRBackupSession -State Working)) {
     $items += [pscustomobject]@{ target=$target; session=[string]$session.Id; startedUtc=([datetime]$started).ToUniversalTime().ToString('o') }
   }
 }
-ConvertTo-Json -InputObject @($items) -Depth 4 -Compress";
+ConvertTo-Json -InputObject ([pscustomobject]@{ moduleAvailable=$true; items=@($items) }) -Depth 4 -Compress";
                 string output = RunPowerShell(script);
                 JToken token = JToken.Parse(output.Trim());
-                IEnumerable<JToken> rows = token is JArray array ? array : new[] { token };
+                if (!((bool?)token["moduleAvailable"] ?? false))
+                {
+                    if (!veeamModuleMissingLogged)
+                    {
+                        Log.Info("Veeam Backup & Replication PowerShell no está instalado; se omite la lectura de sesiones activas de Veeam.");
+                        veeamModuleMissingLogged = true;
+                    }
+                    return;
+                }
+                IEnumerable<JToken> rows = token["items"] as JArray ?? new JArray();
                 foreach (JToken row in rows)
                 {
                     string target = (string)row["target"];
