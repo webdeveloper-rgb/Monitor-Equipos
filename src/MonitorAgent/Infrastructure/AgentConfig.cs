@@ -10,7 +10,7 @@ namespace MonitorAgent.Infrastructure
     {
         public string ApiUrl { get; set; } = "";
         public string ApiToken { get; set; } = "";
-        public string UpdateManifestUrl { get; set; } = "https://github.com/webdeveloper-rgb/agent-updates/releases/download/v1.3.10/update.json";
+        public string UpdateManifestUrl { get; set; } = AppInfo.DefaultUpdateManifestUrl;
         public string RustDeskId { get; set; } = "";
         public string RustDeskPassword { get; set; } = "";
         public string ClientNote { get; set; } = "";
