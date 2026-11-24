@@ -20,11 +20,7 @@ namespace MonitorAgent.Collectors
             bool fullAudit = context.State.EventExtractionMode == "full";
             string mode = fullAudit ? "full" : "standard";
             var logNames = fullAudit
-                ? EventLogSession.GlobalSession.GetLogNames()
-                    .Where(name => !string.IsNullOrWhiteSpace(name))
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
-                    .ToList()
+                ? GetReadableFullAuditLogNames()
                 : (cfg.EventLogs ?? new string[0])
                     .Where(name => !string.IsNullOrWhiteSpace(name))
                     .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -145,6 +141,42 @@ namespace MonitorAgent.Collectors
                 ? (startIndex + logsProcessed) % logNames.Count
                 : 0;
             report.Events = report.Events.OrderByDescending(x => x.TimeUtc).ToList();
+        }
+
+        static System.Collections.Generic.List<string> GetReadableFullAuditLogNames()
+        {
+            var names = EventLogSession.GlobalSession.GetLogNames()
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(name => name, StringComparer.OrdinalIgnoreCase);
+            var readable = new System.Collections.Generic.List<string>();
+            foreach (string name in names)
+            {
+                try
+                {
+                    using (var configuration = new EventLogConfiguration(name))
+                    {
+                        // Analytic and Debug logs are high-volume diagnostic channels. Windows
+                        // lists them even when disabled, and EventLogReader cannot reliably
+                        // query those channels in that state.
+                        if (!configuration.IsEnabled
+                            || configuration.LogType == EventLogType.Analytical
+                            || configuration.LogType == EventLogType.Debug)
+                            continue;
+                    }
+                    readable.Add(name);
+                }
+                catch (EventLogException)
+                {
+                    // The channel disappeared or became unavailable while enumerating logs.
+                    // It will be reconsidered on the next collection cycle.
+                }
+                catch (InvalidOperationException)
+                {
+                    // Some Windows channels expose metadata but are not in a readable state.
+                }
+            }
+            return readable;
         }
 
         static string GetLevelName(EventRecord e)
