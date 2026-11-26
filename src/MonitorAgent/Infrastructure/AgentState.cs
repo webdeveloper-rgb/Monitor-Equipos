@@ -33,7 +33,10 @@ namespace MonitorAgent.Infrastructure
             if (state == null) state = new AgentState();
             if (string.IsNullOrEmpty(state.MachineId))
             {
-                state.MachineId = Guid.NewGuid().ToString();
+                state.MachineId = MachineIdentity.Create(out var hardwareBased);
+                Log.Info(hardwareBased
+                    ? "Identificador estable inicializado a partir de identificadores SMBIOS del equipo."
+                    : "No se encontraron identificadores SMBIOS fiables; se usará un identificador local no persistente tras formatear.");
                 state.Save();
             }
             if (state.EventLogCursors == null)
