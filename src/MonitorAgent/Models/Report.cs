@@ -7,6 +7,8 @@ namespace MonitorAgent.Models
     {
         public string AgentVersion { get; set; }
         public string MachineId { get; set; }
+        public string StableMachineId { get; set; }
+        public bool IdentityMigrationSupported { get; set; }
         public string HardwareUuid { get; set; }
         public string Hostname { get; set; }
         public string ClientNote { get; set; }

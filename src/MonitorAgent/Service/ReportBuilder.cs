@@ -40,6 +40,8 @@ namespace MonitorAgent.Service
             {
                 AgentVersion = AppInfo.Version,
                 MachineId = state.MachineId,
+                StableMachineId = state.StableMachineId,
+                IdentityMigrationSupported = true,
                 Hostname = Environment.MachineName,
                 ClientNote = context.Config.ClientNote,
                 RustDeskId = context.Config.RustDeskId,

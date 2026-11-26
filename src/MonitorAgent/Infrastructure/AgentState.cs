@@ -8,6 +8,8 @@ namespace MonitorAgent.Infrastructure
     sealed class AgentState
     {
         public string MachineId { get; set; }
+        // Identificador de hardware propuesto; se conserva aparte hasta que el servidor confirme la migración.
+        public string StableMachineId { get; set; }
         public string EventExtractionMode { get; set; } = "standard";
         public int EventLogScanOffset { get; set; }
         public Dictionary<string, EventLogCursor> EventLogCursors { get; set; } =
@@ -34,10 +36,19 @@ namespace MonitorAgent.Infrastructure
             if (string.IsNullOrEmpty(state.MachineId))
             {
                 state.MachineId = MachineIdentity.Create(out var hardwareBased);
+                state.StableMachineId = hardwareBased ? state.MachineId : null;
                 Log.Info(hardwareBased
                     ? "Identificador estable inicializado a partir de identificadores SMBIOS del equipo."
                     : "No se encontraron identificadores SMBIOS fiables; se usará un identificador local no persistente tras formatear.");
                 state.Save();
+            }
+            else if (string.IsNullOrWhiteSpace(state.StableMachineId)
+                && MachineIdentity.TryCreate(out var stableMachineId))
+            {
+                // Conserva el GUID en uso para autenticarse hasta recibir el acuse del servidor.
+                state.StableMachineId = stableMachineId;
+                state.Save();
+                Log.Info("Identificador de hardware preparado; pendiente de confirmación del servidor.");
             }
             if (state.EventLogCursors == null)
                 state.EventLogCursors = new Dictionary<string, EventLogCursor>(StringComparer.OrdinalIgnoreCase);

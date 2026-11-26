@@ -107,8 +107,15 @@ namespace MonitorAgent.Service
             string json = JsonConvert.SerializeObject(report, Formatting.None, JsonDefaults.Settings);
 
             Outbox.Flush(cfg, state.MachineId);
-            if (ApiClient.Send(cfg, state.MachineId, json, out var error, out var eventExtractionMode))
+            if (ApiClient.Send(cfg, state.MachineId, json, out var error, out var eventExtractionMode, out var canonicalMachineId))
             {
+                if (!string.IsNullOrWhiteSpace(state.StableMachineId)
+                    && string.Equals(canonicalMachineId, state.StableMachineId, StringComparison.OrdinalIgnoreCase)
+                    && !string.Equals(state.MachineId, canonicalMachineId, StringComparison.OrdinalIgnoreCase))
+                {
+                    state.MachineId = canonicalMachineId;
+                    Log.Info("El servidor confirmó el nuevo identificador estable del equipo.");
+                }
                 if (eventExtractionMode == "standard" || eventExtractionMode == "full")
                 {
                     if (state.EventExtractionMode != eventExtractionMode)

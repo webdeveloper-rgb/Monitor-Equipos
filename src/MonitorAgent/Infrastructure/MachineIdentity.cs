@@ -12,6 +12,18 @@ namespace MonitorAgent.Infrastructure
     {
         public static string Create(out bool hardwareBased)
         {
+            if (TryCreate(out var id))
+            {
+                hardwareBased = true;
+                return id;
+            }
+
+            hardwareBased = false;
+            return Guid.NewGuid().ToString("D");
+        }
+
+        public static bool TryCreate(out string id)
+        {
             var parts = new List<string>();
             Add(parts, "system-uuid", Read("SELECT UUID FROM Win32_ComputerSystemProduct", "UUID"));
             Add(parts, "bios-serial", Read("SELECT SerialNumber FROM Win32_BIOS", "SerialNumber"));
@@ -19,8 +31,8 @@ namespace MonitorAgent.Infrastructure
 
             if (parts.Count == 0)
             {
-                hardwareBased = false;
-                return Guid.NewGuid().ToString("D");
+                id = null;
+                return false;
             }
 
             byte[] hash;
@@ -29,11 +41,11 @@ namespace MonitorAgent.Infrastructure
 
             var guidBytes = new byte[16];
             Buffer.BlockCopy(hash, 0, guidBytes, 0, guidBytes.Length);
-            // UUID version 5 layout; deterministic from the hardware fingerprint.
+            // Keep the RFC 4122 version/variant bits so the fingerprint fits the server's GUID identity format.
             guidBytes[7] = (byte)((guidBytes[7] & 0x0F) | 0x50);
             guidBytes[8] = (byte)((guidBytes[8] & 0x3F) | 0x80);
-            hardwareBased = true;
-            return new Guid(guidBytes).ToString("D");
+            id = new Guid(guidBytes).ToString("D");
+            return true;
         }
 
         static string Read(string query, string field)

@@ -24,6 +24,8 @@ namespace MonitorAgent.Api
         {
             [JsonProperty("event_extraction_mode")]
             public string EventExtractionMode { get; set; }
+            [JsonProperty("machine_id")]
+            public string MachineId { get; set; }
         }
 
         public static string CreateDeviceToken()
@@ -79,12 +81,19 @@ namespace MonitorAgent.Api
 
         public static bool Send(AgentConfig cfg, string machineId, string json, out string error)
         {
-            return Send(cfg, machineId, json, out error, out _);
+            return Send(cfg, machineId, json, out error, out _, out _);
         }
 
         public static bool Send(AgentConfig cfg, string machineId, string json, out string error, out string eventExtractionMode)
         {
+            return Send(cfg, machineId, json, out error, out eventExtractionMode, out _);
+        }
+
+        public static bool Send(AgentConfig cfg, string machineId, string json, out string error,
+            out string eventExtractionMode, out string canonicalMachineId)
+        {
             eventExtractionMode = null;
+            canonicalMachineId = null;
             try
             {
                 var ingestUri = new Uri(cfg.ApiUrl, UriKind.Absolute);
@@ -132,6 +141,7 @@ namespace MonitorAgent.Api
                                     string responseJson = resp.Content.ReadAsStringAsync().GetAwaiter().GetResult();
                                     var responseData = JsonConvert.DeserializeObject<IngestResponse>(responseJson);
                                     eventExtractionMode = responseData?.EventExtractionMode;
+                                    canonicalMachineId = responseData?.MachineId;
                                     error = null;
                                     return true;
                                 }
